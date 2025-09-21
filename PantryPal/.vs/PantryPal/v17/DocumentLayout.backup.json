@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|d:\\work\\pantry-pal-v1.1\\pantrypal\\pantrypal.core\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|solutionrelative:pantrypal.core\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{7EBED154-ED19-412D-863B-71ADF766072A}|PantryPal.Mobile\\PantryPal.Mobile.csproj|d:\\work\\pantry-pal-v1.1\\pantrypal\\pantrypal.mobile\\pantrypal.mobile.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{7EBED154-ED19-412D-863B-71ADF766072A}|PantryPal.Mobile\\PantryPal.Mobile.csproj|solutionrelative:pantrypal.mobile\\pantrypal.mobile.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,14 +19,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Class1.cs",
-              "RelativeDocumentMoniker": "PantryPal.Core\\Class1.cs",
-              "ToolTip": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Class1.cs",
-              "RelativeToolTip": "PantryPal.Core\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-21T02:16:59.41Z",
+              "Title": "PantryPal.Mobile",
+              "DocumentMoniker": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Mobile\\PantryPal.Mobile.csproj",
+              "RelativeDocumentMoniker": "PantryPal.Mobile\\PantryPal.Mobile.csproj",
+              "ToolTip": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Mobile\\PantryPal.Mobile.csproj",
+              "RelativeToolTip": "PantryPal.Mobile\\PantryPal.Mobile.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-09-21T05:21:13.891Z",
               "EditorCaption": ""
             }
           ]
