@@ -6,6 +6,6 @@
     Title="Settings">
     <VerticalStackLayout Padding="16" Spacing="8">
         <Label Text="Settings" FontAttributes="Bold" FontSize="18" />
-        <Label Text="(Placeholder for future options)" Opacity="0.7"/>
+        <Label Text="(Work in progress...)" Opacity="0.7"/>
     </VerticalStackLayout>
 </ContentPage>

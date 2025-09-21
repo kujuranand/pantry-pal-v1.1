@@ -42,6 +42,7 @@ namespace PantryPal.Mobile
             // services with logging via DI
             builder.Services.AddSingleton<IListsService, ListsService>();
             builder.Services.AddSingleton<IListItemsService, ListItemsService>();
+            builder.Services.AddSingleton<ISeedService, SeedService>();
 
             // optional: global exception breadcrumbs (DEBUG)
 #if DEBUG

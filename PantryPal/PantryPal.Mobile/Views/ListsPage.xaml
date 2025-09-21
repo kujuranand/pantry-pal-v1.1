@@ -7,6 +7,7 @@
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="New" Clicked="OnNewList" />
+        <ToolbarItem Text="Seed" Clicked="OnSeedClicked" />
     </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="Auto,*" Padding="12">

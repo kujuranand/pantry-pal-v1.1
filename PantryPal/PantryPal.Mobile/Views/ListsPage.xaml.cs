@@ -8,8 +8,10 @@ namespace PantryPal.Mobile.Views;
 
 public partial class ListsPage : ContentPage
 {
-    private IListsService? _lists; // resolve later
+    private IListsService? _lists;
+    private ISeedService? _seed;
     private ILogger<ListsPage>? _log;
+
     private readonly ObservableCollection<GroceryList> _view = new();
     private List<GroceryList> _all = new();
 
@@ -25,6 +27,7 @@ public partial class ListsPage : ContentPage
 
         _log ??= ServiceHelper.Get<ILogger<ListsPage>>();
         _lists ??= ServiceHelper.Get<IListsService>();
+        _seed ??= ServiceHelper.Get<ISeedService>();
 
         _log.LogInformation("[ListsPage] Appearing");
         await LoadAsync();
@@ -73,6 +76,30 @@ public partial class ListsPage : ContentPage
         {
             _log?.LogError(ex, "[ListsPage] Create failed");
             await DisplayAlert("Error", "Could not create list.", "OK");
+        }
+    }
+
+    private async void OnSeedClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            // Optionally prompt for a name; or pass null to auto-name
+            var list = await _seed!.CreateSampleListAsync(name: null, itemCount: null);
+            _log?.LogInformation("[ListsPage] Seeded list id={Id} name='{Name}'", list.Id, list.Name);
+
+            await LoadAsync();
+
+            // Optional: jump straight into the new list
+            var go = await DisplayActionSheet($"Seeded '{list.Name}'", "Stay", null, "Open");
+            if (go == "Open")
+            {
+                await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={list.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Seeding failed");
+            await DisplayAlert("Error", "Could not seed test data.", "OK");
         }
     }
 
