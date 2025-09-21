@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PantryPal.Mobile.Views.ItemEditPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Item">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="12" Spacing="12">
+            <Entry x:Name="NameEntry" Placeholder="Item name (required)" />
+            <Entry x:Name="CostEntry" Placeholder="Cost (e.g., 3.80)" Keyboard="Numeric" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <CheckBox x:Name="PurchasedCheck" VerticalOptions="Center" CheckedChanged="OnPurchasedChecked"/>
+                <Label Text="Purchased" VerticalTextAlignment="Center" />
+            </Grid>
+
+            <DatePicker x:Name="PurchasedPicker" IsEnabled="False" />
+
+            <HorizontalStackLayout Spacing="12" Margin="0,12,0,0">
+                <Button Text="Save" Clicked="OnSave"/>
+                <Button Text="Cancel" Clicked="OnCancel"/>
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

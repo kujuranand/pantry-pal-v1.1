@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PantryPal.Mobile.Views.ListsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Lists">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="New" Clicked="OnNewList" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*" Padding="12">
+        <SearchBar x:Name="SearchBar" Placeholder="Search lists..." TextChanged="OnSearchChanged" />
+
+        <CollectionView x:Name="ListsView" Grid.Row="1"
+                        SelectionMode="Single" SelectionChanged="OnListSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="8" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Name}" FontAttributes="Bold" />
+                            <Label Text="{Binding CreatedUtc, StringFormat='Created {0:yyyy-MM-dd}'}"
+                                   FontSize="12" Opacity="0.7"/>
+                        </VerticalStackLayout>
+
+                        <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                            <Button Text="Rename" Clicked="OnRenameClicked" CommandParameter="{Binding .}" />
+                            <Button Text="Delete" Clicked="OnDeleteClicked" CommandParameter="{Binding .}" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

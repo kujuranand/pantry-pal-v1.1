@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PantryPal.Mobile.Views.ListDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="List">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Add" Clicked="OnAddItem" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="12">
+        <SearchBar x:Name="SearchBar" Placeholder="Search items..." TextChanged="OnSearchChanged" />
+
+        <CollectionView x:Name="ItemsView" Grid.Row="1"
+                        SelectionMode="Single" SelectionChanged="OnItemSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="8" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                        <Label Text="{Binding Name}" FontAttributes="Bold" />
+                        <Label Grid.Row="1"
+                               Text="{Binding PurchasedDate, StringFormat='Purchased {0:yyyy-MM-dd}'}"
+                               FontSize="12" Opacity="0.7"/>
+                        <Label Grid.Column="1" Text="{Binding Cost, StringFormat='${0:0.00}'}"
+                               VerticalTextAlignment="Center"/>
+                        <HorizontalStackLayout Grid.Column="1" Grid.Row="1" Spacing="8">
+                            <Button Text="Edit" Clicked="OnEditClicked" CommandParameter="{Binding .}" />
+                            <Button Text="Delete" Clicked="OnDeleteClicked" CommandParameter="{Binding .}" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" Padding="4,8,4,0">
+            <Label Text="Total:" FontAttributes="Bold"/>
+            <Label x:Name="TotalLabel" Grid.Column="1" HorizontalOptions="End" />
+        </Grid>
+    </Grid>
+</ContentPage>

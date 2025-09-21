@@ -1,10 +1,14 @@
-﻿namespace PantryPal.Mobile
+﻿using PantryPal.Mobile.Views;
+
+namespace PantryPal.Mobile;
+
+public partial class AppShell : Shell
 {
-    public partial class AppShell : Shell
+    public AppShell()
     {
-        public AppShell()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+
+        Routing.RegisterRoute(nameof(ListDetailPage), typeof(ListDetailPage));
+        Routing.RegisterRoute(nameof(ItemEditPage), typeof(ItemEditPage));
     }
 }

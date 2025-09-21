@@ -10,15 +10,18 @@ public sealed class ListsService : IListsService
 
     public ListsService(PantryDatabase db) => _db = db;
 
-    public async Task<IReadOnlyList<GroceryList>> GetAllAsync()
-        => await _db.Connection.Table<GroceryList>()
-               .OrderByDescending(l => l.CreatedUtc)
-               .ToListAsync();
+    public async Task<IReadOnlyList<GroceryList>> GetAllAsync() =>
+        await _db.Connection.Table<GroceryList>()
+            .OrderByDescending(l => l.CreatedUtc)
+            .ToListAsync();
 
-    public Task<GroceryList?> GetAsync(int id)
-        => _db.Connection.Table<GroceryList>()
-               .Where(l => l.Id == id)
-               .FirstOrDefaultAsync();
+    public async Task<GroceryList?> GetAsync(int id)
+    {
+        var result = await _db.Connection.Table<GroceryList>()
+            .Where(l => l.Id == id)
+            .FirstOrDefaultAsync();
+        return result; // may be null
+    }
 
     public async Task<GroceryList> CreateAsync(string name, DateTime? createdUtc = null)
     {
@@ -28,7 +31,7 @@ public sealed class ListsService : IListsService
         var entity = new GroceryList
         {
             Name = name.Trim(),
-            CreatedUtc = (createdUtc ?? DateTime.UtcNow)
+            CreatedUtc = createdUtc ?? DateTime.UtcNow
         };
 
         await _db.Connection.InsertAsync(entity);
@@ -47,9 +50,7 @@ public sealed class ListsService : IListsService
 
     public async Task DeleteAsync(int id)
     {
-        // FK cascade will delete items (ON DELETE CASCADE set in migration)
         var rows = await _db.Connection.DeleteAsync<GroceryList>(id);
-        if (rows == 0)
-            throw new InvalidOperationException("List not found.");
+        if (rows == 0) throw new InvalidOperationException("List not found.");
     }
 }
