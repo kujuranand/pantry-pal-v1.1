@@ -1,33 +1,33 @@
 ﻿using SQLite;
 using PantryPal.Core.Migrations;
+using Microsoft.Extensions.Logging;
 
 namespace PantryPal.Core.Data;
 
-/// <summary>
-/// Wraps a single SQLiteAsyncConnection and runs versioned migrations.
-/// Pass in the DB file path from the app (Android) layer.
-/// </summary>
 public sealed class PantryDatabase
 {
     private readonly string _dbPath;
     private readonly SQLiteOpenFlags _openFlags;
+    private readonly ILogger<PantryDatabase> _logger;
     private SQLiteAsyncConnection? _conn;
     private bool _initialized;
 
-    // Register your migrations here in order
     private static readonly IMigration[] _migrations = new IMigration[]
     {
         new _0001_Initial(),
     };
 
-    public PantryDatabase(string dbPath,
+    public PantryDatabase(
+        string dbPath,
+        ILogger<PantryDatabase> logger,
         SQLiteOpenFlags openFlags = SQLiteOpenFlags.ReadWrite
-                                   | SQLiteOpenFlags.Create
-                                   | SQLiteOpenFlags.SharedCache
-                                   | SQLiteOpenFlags.FullMutex)
+                                  | SQLiteOpenFlags.Create
+                                  | SQLiteOpenFlags.SharedCache
+                                  | SQLiteOpenFlags.FullMutex)
     {
         _dbPath = dbPath;
         _openFlags = openFlags;
+        _logger = logger;
     }
 
     public SQLiteAsyncConnection Connection =>
@@ -37,27 +37,43 @@ public sealed class PantryDatabase
     {
         if (_initialized) return;
 
-        _conn = new SQLiteAsyncConnection(_dbPath, _openFlags);
+        _logger.LogInformation("[DB] Opening connection path='{Path}' flags='{Flags}'", _dbPath, _openFlags);
 
-        // Enforce FKs for this connection (also set inside migrations)
-        await _conn.ExecuteAsync("PRAGMA foreign_keys = ON;");
-
-        // Read current schema version
-        var version = await _conn.ExecuteScalarAsync<int>("PRAGMA user_version;");
-
-        // Apply migrations in sequence
-        while (true)
+        try
         {
-            var next = _migrations.FirstOrDefault(m => m.FromVersion == version);
-            if (next is null) break;
+            _conn = new SQLiteAsyncConnection(_dbPath, _openFlags);
 
-            await next.UpAsync(_conn);
-            version = next.ToVersion;
+            await _conn.ExecuteAsync("PRAGMA foreign_keys = ON;");
+            var version = await _conn.ExecuteScalarAsync<int>("PRAGMA user_version;");
+            _logger.LogInformation("[DB] Current user_version={Version}", version);
 
-            // Persist new version
-            await _conn.ExecuteAsync($"PRAGMA user_version = {version};");
+            while (true)
+            {
+                var next = _migrations.FirstOrDefault(m => m.FromVersion == version);
+                if (next is null) break;
+
+                _logger.LogInformation("[DB] Applying migration {From}->{To}", next.FromVersion, next.ToVersion);
+                try
+                {
+                    await next.UpAsync(_conn);
+                    version = next.ToVersion;
+                    await _conn.ExecuteAsync($"PRAGMA user_version = {version};");
+                    _logger.LogInformation("[DB] Migration complete -> user_version={Version}", version);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[DB] Migration {From}->{To} failed", next.FromVersion, next.ToVersion);
+                    throw;
+                }
+            }
+
+            _initialized = true;
+            _logger.LogInformation("[DB] Initialized.");
         }
-
-        _initialized = true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[DB] InitializeAsync failed.");
+            throw;
+        }
     }
 }

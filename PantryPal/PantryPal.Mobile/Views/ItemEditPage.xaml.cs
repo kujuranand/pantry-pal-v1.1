@@ -1,8 +1,8 @@
 using System.Globalization;
-using Microsoft.Extensions.DependencyInjection;
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
+using Microsoft.Extensions.Logging;
 
 namespace PantryPal.Mobile.Views;
 
@@ -13,7 +13,8 @@ public partial class ItemEditPage : ContentPage
     public int ListId { get; set; }
     public int? ItemId { get; set; }
 
-    private IListItemsService? _items; // resolve later
+    private IListItemsService? _items;
+    private ILogger<ItemEditPage>? _log;
     private GroceryListItem? _editing;
 
     public ItemEditPage()
@@ -25,43 +26,53 @@ public partial class ItemEditPage : ContentPage
     {
         base.OnAppearing();
 
+        _log ??= ServiceHelper.Get<ILogger<ItemEditPage>>();
         _items ??= ServiceHelper.Get<IListItemsService>();
 
         PurchasedPicker.Date = DateTime.Now.Date;
 
-        if (ItemId is int id)
+        try
         {
-            var listItems = await _items!.GetByListAsync(ListId);
-            _editing = listItems.FirstOrDefault(i => i.Id == id);
-            if (_editing is null)
+            if (ItemId is int id)
             {
-                await DisplayAlert("Not found", "Item not found.", "OK");
-                await Shell.Current.GoToAsync("..");
-                return;
-            }
+                var listItems = await _items!.GetByListAsync(ListId);
+                _editing = listItems.FirstOrDefault(i => i.Id == id);
+                if (_editing is null)
+                {
+                    _log?.LogWarning("[ItemEditPage] Item not found id={Id}", id);
+                    await DisplayAlert("Not found", "Item not found.", "OK");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
 
-            Title = "Edit Item";
-            NameEntry.Text = _editing.Name;
-            CostEntry.Text = _editing.Cost.ToString("0.##", CultureInfo.InvariantCulture);
+                Title = "Edit Item";
+                NameEntry.Text = _editing.Name;
+                CostEntry.Text = _editing.Cost.ToString("0.##", CultureInfo.InvariantCulture);
 
-            if (_editing.PurchasedDate.HasValue)
-            {
-                PurchasedCheck.IsChecked = true;
-                PurchasedPicker.IsEnabled = true;
-                PurchasedPicker.Date = DateTime.SpecifyKind(_editing.PurchasedDate.Value, DateTimeKind.Utc)
-                                               .ToLocalTime().Date;
+                if (_editing.PurchasedDate.HasValue)
+                {
+                    PurchasedCheck.IsChecked = true;
+                    PurchasedPicker.IsEnabled = true;
+                    PurchasedPicker.Date = DateTime.SpecifyKind(_editing.PurchasedDate.Value, DateTimeKind.Utc)
+                                                   .ToLocalTime().Date;
+                }
+                else
+                {
+                    PurchasedCheck.IsChecked = false;
+                    PurchasedPicker.IsEnabled = false;
+                }
             }
             else
             {
-                PurchasedCheck.IsChecked = false;
-                PurchasedPicker.IsEnabled = false;
+                Title = "Add Item";
+                PurchasedCheck.IsChecked = true;
+                PurchasedPicker.IsEnabled = true;
             }
         }
-        else
+        catch (Exception ex)
         {
-            Title = "Add Item";
-            PurchasedCheck.IsChecked = true;
-            PurchasedPicker.IsEnabled = true;
+            _log?.LogError(ex, "[ItemEditPage] OnAppearing load failed listId={ListId} itemId={ItemId}", ListId, ItemId);
+            await DisplayAlert("Error", "Could not load item.", "OK");
         }
     }
 
@@ -77,31 +88,38 @@ public partial class ItemEditPage : ContentPage
 
     private async void OnSave(object sender, EventArgs e)
     {
-        if (_items is null) return;
-
-        var name = NameEntry.Text?.Trim();
-        if (string.IsNullOrWhiteSpace(name))
+        try
         {
-            await DisplayAlert("Required", "Name is required.", "OK");
-            return;
-        }
+            var name = NameEntry.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                await DisplayAlert("Required", "Name is required.", "OK");
+                return;
+            }
 
-        if (!decimal.TryParse(CostEntry.Text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var cost) || cost < 0)
+            if (!decimal.TryParse(CostEntry.Text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var cost) || cost < 0)
+            {
+                _log?.LogWarning("[ItemEditPage] Invalid cost input '{Raw}'", CostEntry.Text);
+                await DisplayAlert("Cost", "Enter a cost >= 0 (e.g., 3.80).", "OK");
+                return;
+            }
+
+            DateTime? purchasedUtc = null;
+            if (PurchasedCheck.IsChecked)
+                purchasedUtc = DateTime.SpecifyKind(PurchasedPicker.Date, DateTimeKind.Local).ToUniversalTime();
+
+            var item = _editing ?? new GroceryListItem { ListId = ListId };
+            item.Name = name;
+            item.Cost = cost;
+            item.PurchasedDate = purchasedUtc;
+
+            await _items!.AddOrUpdateAsync(item);
+            await Shell.Current.GoToAsync("..");
+        }
+        catch (Exception ex)
         {
-            await DisplayAlert("Cost", "Enter a cost >= 0 (e.g., 3.80).", "OK");
-            return;
+            _log?.LogError(ex, "[ItemEditPage] Save failed listId={ListId} itemId={ItemId}", ListId, ItemId);
+            await DisplayAlert("Error", "Could not save item.", "OK");
         }
-
-        DateTime? purchasedUtc = null;
-        if (PurchasedCheck.IsChecked)
-            purchasedUtc = DateTime.SpecifyKind(PurchasedPicker.Date, DateTimeKind.Local).ToUniversalTime();
-
-        var item = _editing ?? new GroceryListItem { ListId = ListId };
-        item.Name = name;
-        item.Cost = cost;
-        item.PurchasedDate = purchasedUtc;
-
-        await _items.AddOrUpdateAsync(item);
-        await Shell.Current.GoToAsync("..");
     }
 }

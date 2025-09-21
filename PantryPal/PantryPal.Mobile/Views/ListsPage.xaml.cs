@@ -1,14 +1,15 @@
 using System.Collections.ObjectModel;
-using Microsoft.Extensions.DependencyInjection;
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
+using Microsoft.Extensions.Logging;
 
 namespace PantryPal.Mobile.Views;
 
 public partial class ListsPage : ContentPage
 {
     private IListsService? _lists; // resolve later
+    private ILogger<ListsPage>? _log;
     private readonly ObservableCollection<GroceryList> _view = new();
     private List<GroceryList> _all = new();
 
@@ -22,14 +23,27 @@ public partial class ListsPage : ContentPage
     {
         base.OnAppearing();
 
+        _log ??= ServiceHelper.Get<ILogger<ListsPage>>();
         _lists ??= ServiceHelper.Get<IListsService>();
+
+        _log.LogInformation("[ListsPage] Appearing");
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        _all = (await _lists!.GetAllAsync()).ToList();
-        ApplyFilter(SearchBar.Text);
+        try
+        {
+            _all = (await _lists!.GetAllAsync()).ToList();
+            _log?.LogInformation("[ListsPage] Loaded count={Count}", _all.Count);
+            ApplyFilter(SearchBar.Text);
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Load failed");
+            await DisplayAlert("Error", "Could not load lists.", "OK");
+            _view.Clear();
+        }
     }
 
     private void ApplyFilter(string? q)
@@ -47,44 +61,73 @@ public partial class ListsPage : ContentPage
 
     private async void OnNewList(object sender, EventArgs e)
     {
-        if (_lists is null) return;
-        var name = await DisplayPromptAsync("New List", "Enter a name:");
-        if (string.IsNullOrWhiteSpace(name)) return;
+        try
+        {
+            var name = await DisplayPromptAsync("New List", "Enter a name:");
+            if (string.IsNullOrWhiteSpace(name)) return;
 
-        await _lists.CreateAsync(name.Trim());
-        await LoadAsync();
+            await _lists!.CreateAsync(name.Trim());
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Create failed");
+            await DisplayAlert("Error", "Could not create list.", "OK");
+        }
     }
 
     private async void OnRenameClicked(object sender, EventArgs e)
     {
-        if (_lists is null) return;
         if ((sender as Button)?.CommandParameter is not GroceryList list) return;
 
-        var newName = await DisplayPromptAsync("Rename", "New name:", initialValue: list.Name);
-        if (string.IsNullOrWhiteSpace(newName)) return;
+        try
+        {
+            var newName = await DisplayPromptAsync("Rename", "New name:", initialValue: list.Name);
+            if (string.IsNullOrWhiteSpace(newName)) return;
 
-        await _lists.RenameAsync(list.Id, newName.Trim());
-        await LoadAsync();
+            await _lists!.RenameAsync(list.Id, newName.Trim());
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Rename failed id={Id}", list.Id);
+            await DisplayAlert("Error", "Could not rename list.", "OK");
+        }
     }
 
     private async void OnDeleteClicked(object sender, EventArgs e)
     {
-        if (_lists is null) return;
         if ((sender as Button)?.CommandParameter is not GroceryList list) return;
 
-        var ok = await DisplayAlert("Delete", $"Delete '{list.Name}'?", "Delete", "Cancel");
-        if (!ok) return;
+        try
+        {
+            var ok = await DisplayAlert("Delete", $"Delete '{list.Name}'?", "Delete", "Cancel");
+            if (!ok) return;
 
-        await _lists.DeleteAsync(list.Id);
-        await LoadAsync();
+            await _lists!.DeleteAsync(list.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Delete failed id={Id}", list.Id);
+            await DisplayAlert("Error", "Could not delete list.", "OK");
+        }
     }
 
     private async void OnListSelected(object sender, SelectionChangedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is GroceryList list)
+        try
         {
-            await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={list.Id}");
-            ((CollectionView)sender).SelectedItem = null;
+            if (e.CurrentSelection.FirstOrDefault() is GroceryList list)
+            {
+                await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={list.Id}");
+                ((CollectionView)sender).SelectedItem = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Navigation to ListDetail failed");
+            await DisplayAlert("Error", "Navigation failed.", "OK");
         }
     }
 }
