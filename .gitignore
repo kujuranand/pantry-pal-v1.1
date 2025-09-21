@@ -25,6 +25,7 @@ TestResults/
 *.sln.docstates
 
 # Visual Studio / VS Code / Rider
+**/.vs/
 .vs/
 .vscode/
 .idea/
