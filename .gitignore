@@ -86,7 +86,7 @@ keystore.properties
 # Crash dumps
 *.dmp
 *.mdmp
-*.core
+core
 
 # MAUI hot reload/temp
 *.hotreload

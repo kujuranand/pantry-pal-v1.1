@@ -1,12 +1,54 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|d:\\work\\pantry-pal-v1.1\\pantrypal\\pantrypal.core\\models\\grocerylistitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|solutionrelative:pantrypal.core\\models\\grocerylistitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|d:\\work\\pantry-pal-v1.1\\pantrypal\\pantrypal.core\\models\\grocerylist.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FB819895-8786-490C-BA70-B28DE7F09C43}|PantryPal.Core\\PantryPal.Core.csproj|solutionrelative:pantrypal.core\\models\\grocerylist.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "GroceryListItem.cs",
+              "DocumentMoniker": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Models\\GroceryListItem.cs",
+              "RelativeDocumentMoniker": "PantryPal.Core\\Models\\GroceryListItem.cs",
+              "ToolTip": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Models\\GroceryListItem.cs",
+              "RelativeToolTip": "PantryPal.Core\\Models\\GroceryListItem.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-21T06:42:27.232Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GroceryList.cs",
+              "DocumentMoniker": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Models\\GroceryList.cs",
+              "RelativeDocumentMoniker": "PantryPal.Core\\Models\\GroceryList.cs",
+              "ToolTip": "D:\\Work\\pantry-pal-v1.1\\PantryPal\\PantryPal.Core\\Models\\GroceryList.cs",
+              "RelativeToolTip": "PantryPal.Core\\Models\\GroceryList.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-21T06:13:47.793Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }
