@@ -42,4 +42,14 @@
     <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
     <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
     <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
+
+    <!-- Danger color for delete actions -->
+    <Color x:Key="Danger">#C62828</Color>
+    <!-- Brush for Danger color -->
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Danger}"/>
+
+    <!-- Card background brush aliases -->
+    <SolidColorBrush x:Key="CardLightBrush" Color="{StaticResource White}"/>
+    <SolidColorBrush x:Key="CardDarkBrush" Color="{StaticResource Black}"/>
+    
 </ResourceDictionary>
