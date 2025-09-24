@@ -9,4 +9,6 @@ public interface IListsService
     Task<GroceryList> CreateAsync(string name, DateTime? createdUtc = null);
     Task RenameAsync(int id, string newName);
     Task DeleteAsync(int id);
+    
+    Task<IReadOnlyList<ListSummary>> GetListSummariesAsync(); // List summaries for Lists page
 }

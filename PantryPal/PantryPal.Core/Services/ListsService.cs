@@ -107,4 +107,32 @@ public sealed class ListsService : IListsService
             throw;
         }
     }
+
+    // Single group query for lists summaries including empty lists
+    public async Task<IReadOnlyList<ListSummary>> GetListSummariesAsync()
+    {
+        try
+        {
+            const string sql = @"
+SELECT
+  l.Id                  AS Id,
+  l.Name                AS Name,
+  l.CreatedUtc          AS CreatedUtc,
+  COUNT(i.Id)           AS ItemCount,
+  IFNULL(SUM(i.Cost),0) AS TotalCost
+FROM GroceryLists l
+LEFT JOIN GroceryListItems i ON i.ListId = l.Id
+GROUP BY l.Id
+ORDER BY l.CreatedUtc DESC;";
+
+            var rows = await _db.Connection.QueryAsync<ListSummary>(sql);
+            _logger.LogInformation("[ListsService] GetListSummaries count={Count}", rows.Count);
+            return rows;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ListsService] GetListSummaries failed");
+            throw;
+        }
+    }
 }
