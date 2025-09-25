@@ -1,24 +1,50 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;                      
+using System.Runtime.CompilerServices;            
+using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
-using Microsoft.Extensions.Logging;
 
 namespace PantryPal.Mobile.Views;
 
-public partial class ListsPage : ContentPage
+public partial class ListsPage : ContentPage, INotifyPropertyChanged  
 {
     private IListsService? _lists;
     private ISeedService? _seed;
     private ILogger<ListsPage>? _log;
 
-    private readonly ObservableCollection<GroceryList> _view = new();
-    private List<GroceryList> _all = new();
+    private readonly ObservableCollection<ListSummary> _view = new();
+    private List<ListSummary> _all = new();
+
+    private bool _suppressNextTap;
+    private static readonly TimeSpan TapSuppression = TimeSpan.FromMilliseconds(150);
+
+    // total cost bar
+    private string _allTotalCaptionText = "Total";
+    public string AllTotalCaptionText
+    {
+        get => _allTotalCaptionText;
+        set { if (_allTotalCaptionText != value) { _allTotalCaptionText = value; OnPropertyChanged(); } }
+    }
+
+    private string _allTotalValueText = "$0.00";
+    public string AllTotalValueText
+    {
+        get => _allTotalValueText;
+        set { if (_allTotalValueText != value) { _allTotalValueText = value; OnPropertyChanged(); } }
+    }
+
+    public ICommand LongPressCommand { get; }
 
     public ListsPage()
     {
         InitializeComponent();
+        BindingContext = this;                    
         ListsView.ItemsSource = _view;
+
+        LongPressCommand = new Command<ListSummary>(async s => await OnCardLongPressAsync(s));
     }
 
     protected override async void OnAppearing()
@@ -37,8 +63,8 @@ public partial class ListsPage : ContentPage
     {
         try
         {
-            _all = (await _lists!.GetAllAsync()).ToList();
-            _log?.LogInformation("[ListsPage] Loaded count={Count}", _all.Count);
+            _all = (await _lists!.GetListSummariesAsync()).ToList();
+            _log?.LogInformation("[ListsPage] Loaded summaries count={Count}", _all.Count);
             ApplyFilter(SearchBar.Text);
         }
         catch (Exception ex)
@@ -46,6 +72,7 @@ public partial class ListsPage : ContentPage
             _log?.LogError(ex, "[ListsPage] Load failed");
             await DisplayAlert("Error", "Could not load lists.", "OK");
             _view.Clear();
+            UpdateAllTotal();
         }
     }
 
@@ -58,6 +85,27 @@ public partial class ListsPage : ContentPage
 
         _view.Clear();
         foreach (var l in filtered) _view.Add(l);
+
+        UpdateAllTotal();
+    }
+
+    private void UpdateAllTotal()
+    {
+        try
+        {
+            var total = _view.Sum(s => s.TotalCost);
+            var count = _view.Count;
+
+            AllTotalCaptionText = count == 1 ? "Total (1 list)" : $"Total ({count} lists)";
+            AllTotalValueText = $"${total:0.00}";
+            _log?.LogInformation("[ListsPage] AllTotal updated count={Count} total={Total}", count, total);
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] UpdateAllTotal failed");
+            AllTotalCaptionText = "Total";
+            AllTotalValueText = "$0.00";
+        }
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter(e.NewTextValue);
@@ -83,13 +131,11 @@ public partial class ListsPage : ContentPage
     {
         try
         {
-            // Optionally prompt for a name; or pass null to auto-name
             var list = await _seed!.CreateSampleListAsync(name: null, itemCount: null);
             _log?.LogInformation("[ListsPage] Seeded list id={Id} name='{Name}'", list.Id, list.Name);
 
             await LoadAsync();
 
-            // Optional: jump straight into the new list
             var go = await DisplayActionSheet($"Seeded '{list.Name}'", "Stay", null, "Open");
             if (go == "Open")
             {
@@ -103,53 +149,28 @@ public partial class ListsPage : ContentPage
         }
     }
 
-    private async void OnRenameClicked(object sender, EventArgs e)
-    {
-        if ((sender as Button)?.CommandParameter is not GroceryList list) return;
-
-        try
-        {
-            var newName = await DisplayPromptAsync("Rename", "New name:", initialValue: list.Name);
-            if (string.IsNullOrWhiteSpace(newName)) return;
-
-            await _lists!.RenameAsync(list.Id, newName.Trim());
-            await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            _log?.LogError(ex, "[ListsPage] Rename failed id={Id}", list.Id);
-            await DisplayAlert("Error", "Could not rename list.", "OK");
-        }
-    }
-
-    private async void OnDeleteClicked(object sender, EventArgs e)
-    {
-        if ((sender as Button)?.CommandParameter is not GroceryList list) return;
-
-        try
-        {
-            var ok = await DisplayAlert("Delete", $"Delete '{list.Name}'?", "Delete", "Cancel");
-            if (!ok) return;
-
-            await _lists!.DeleteAsync(list.Id);
-            await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            _log?.LogError(ex, "[ListsPage] Delete failed id={Id}", list.Id);
-            await DisplayAlert("Error", "Could not delete list.", "OK");
-        }
-    }
-
-    private async void OnListSelected(object sender, SelectionChangedEventArgs e)
+    private async void OnCardTapped(object sender, TappedEventArgs e)
     {
         try
         {
-            if (e.CurrentSelection.FirstOrDefault() is GroceryList list)
+            if (_suppressNextTap)
             {
-                await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={list.Id}");
-                ((CollectionView)sender).SelectedItem = null;
+                _log?.LogInformation("[ListsPage] Tap suppressed after long-press.");
+                return;
             }
+
+            var contextItem = (sender as BindableObject)?.BindingContext as ListSummary;
+            var paramItem = e.Parameter as ListSummary;
+            var summary = contextItem ?? paramItem;
+
+            if (summary is null)
+            {
+                _log?.LogWarning("[ListsPage] OnCardTapped: null item context");
+                return;
+            }
+
+            _log?.LogInformation("[ListsPage] Tap open id={Id} name='{Name}'", summary.Id, summary.Name);
+            await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={summary.Id}");
         }
         catch (Exception ex)
         {
@@ -157,4 +178,74 @@ public partial class ListsPage : ContentPage
             await DisplayAlert("Error", "Navigation failed.", "OK");
         }
     }
+
+    private async Task OnCardLongPressAsync(ListSummary s)
+    {
+        try
+        {
+            _suppressNextTap = true;
+
+            _log?.LogInformation("[ListsPage] Long-press id={Id} name='{Name}'", s.Id, s.Name);
+            var choice = await DisplayActionSheet(
+                $"Options for '{s.Name}'",
+                "Cancel", null,
+                "Edit name", "Delete");
+
+            if (choice == "Edit name")
+            {
+                await RenameAsync(s);
+            }
+            else if (choice == "Delete")
+            {
+                await DeleteAsync(s);
+            }
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Long-press action failed id={Id}", s.Id);
+        }
+        finally
+        {
+            await Task.Delay(TapSuppression);
+            _suppressNextTap = false;
+        }
+    }
+
+    private async Task RenameAsync(ListSummary s)
+    {
+        try
+        {
+            var newName = await DisplayPromptAsync("Rename", "New name:", initialValue: s.Name);
+            if (string.IsNullOrWhiteSpace(newName)) return;
+
+            await _lists!.RenameAsync(s.Id, newName.Trim());
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Rename failed id={Id}", s.Id);
+            await DisplayAlert("Error", "Could not rename list.", "OK");
+        }
+    }
+
+    private async Task DeleteAsync(ListSummary s)
+    {
+        try
+        {
+            var ok = await DisplayAlert("Delete", $"Delete '{s.Name}'?", "Delete", "Cancel");
+            if (!ok) return;
+
+            await _lists!.DeleteAsync(s.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "[ListsPage] Delete failed id={Id}", s.Id);
+            await DisplayAlert("Error", "Could not delete list.", "OK");
+        }
+    }
+
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

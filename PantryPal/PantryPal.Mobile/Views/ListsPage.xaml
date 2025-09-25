@@ -3,6 +3,8 @@
     x:Class="PantryPal.Mobile.Views.ListsPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    x:Name="ListsPageRoot"
     Title="Lists">
 
     <ContentPage.ToolbarItems>
@@ -10,27 +12,67 @@
         <ToolbarItem Text="Seed" Clicked="OnSeedClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*" Padding="12">
-        <SearchBar x:Name="SearchBar" Placeholder="Search lists..." TextChanged="OnSearchChanged" />
+    <Grid RowDefinitions="Auto,*,Auto" Padding="12" RowSpacing="12">
 
-        <CollectionView x:Name="ListsView" Grid.Row="1"
-                        SelectionMode="Single" SelectionChanged="OnListSelected">
+        <SearchBar x:Name="SearchBar"
+                   Grid.Row="0"
+                   Placeholder="Search lists..."
+                   TextChanged="OnSearchChanged"
+                   Margin="0,0,0,8" />
+
+        <!-- Lists -->
+        <CollectionView x:Name="ListsView"
+                        Grid.Row="1"
+                        SelectionMode="None">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Grid Padding="8" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                        <VerticalStackLayout>
-                            <Label Text="{Binding Name}" FontAttributes="Bold" />
-                            <Label Text="{Binding CreatedUtc, StringFormat='Created {0:yyyy-MM-dd}'}"
-                                   FontSize="12" Opacity="0.7"/>
-                        </VerticalStackLayout>
+                    <Border Style="{StaticResource CardBorder}"
+                            BindingContext="{Binding .}"
+                            Margin="0,8,0,0">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding Name}" Style="{StaticResource TitleLabel}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding CreatedUtc, StringFormat='Created {0:yyyy-MM-dd}'}"
+                                           Style="{StaticResource MetaLabel}" />
+                                    <Border Style="{StaticResource Chip}">
+                                        <Label Text="{Binding ItemCount, StringFormat='\{0\} items'}"
+                                               Style="{StaticResource MetaLabel}" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
 
-                        <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
-                            <Button Text="Rename" Clicked="OnRenameClicked" CommandParameter="{Binding .}" />
-                            <Button Text="Delete" Clicked="OnDeleteClicked" CommandParameter="{Binding .}" />
-                        </HorizontalStackLayout>
-                    </Grid>
+                            <Label Grid.Column="1"
+                                   Text="{Binding TotalCost, StringFormat='${0:0.00}'}"
+                                   Style="{StaticResource PriceLabel}"
+                                   VerticalOptions="Center" />
+
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    NumberOfTapsRequired="1"
+                                    Tapped="OnCardTapped"
+                                    CommandParameter="{Binding .}" />
+                            </Grid.GestureRecognizers>
+                            <Grid.Behaviors>
+                                <toolkit:TouchBehavior
+                                    LongPressCommand="{Binding Source={x:Reference ListsPageRoot}, Path=LongPressCommand}"
+                                    LongPressCommandParameter="{Binding .}" />
+                            </Grid.Behaviors>
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <!-- Total cost bar -->
+        <Border Grid.Row="2"
+                Style="{StaticResource CardBorder}"
+                Padding="12"
+                Margin="0,8,0,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Label Text="{Binding AllTotalCaptionText}" Style="{StaticResource MetaLabel}" />
+                <Label Grid.Column="1" Text="{Binding AllTotalValueText}" Style="{StaticResource PriceLabel}" />
+            </Grid>
+        </Border>
     </Grid>
 </ContentPage>

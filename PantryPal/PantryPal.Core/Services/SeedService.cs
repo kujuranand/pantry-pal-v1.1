@@ -27,7 +27,11 @@ public sealed class SeedService : ISeedService
 
     public async Task<GroceryList> CreateSampleListAsync(string? name = null, int? itemCount = null, CancellationToken ct = default)
     {
-        var listName = name ?? $"Sample List {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+        // list name with increment
+        var listName = string.IsNullOrWhiteSpace(name)
+            ? $"Test {await GetNextTestIndexAsync()}"              
+            : name.Trim();
+
         var count = itemCount.HasValue ? Math.Clamp(itemCount.Value, 3, 10) : _rng.Next(3, 11);
 
         _log.LogInformation("[Seed] Creating sample list '{Name}' with {Count} items", listName, count);
@@ -35,7 +39,7 @@ public sealed class SeedService : ISeedService
         // Create list
         var list = await _lists.CreateAsync(listName);
 
-        // Unique-ish picks
+        // random picks
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < count; i++)
         {
@@ -70,15 +74,44 @@ public sealed class SeedService : ISeedService
         return list;
     }
 
+    // determine the next incremental index
+    private async Task<int> GetNextTestIndexAsync()
+    {
+        try
+        {
+            var all = await _lists.GetAllAsync();
+            var max = 0;
+
+            foreach (var l in all)
+            {
+                const string prefix = "Test ";
+                if (l.Name?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    var tail = l.Name.Substring(prefix.Length).Trim();
+                    if (int.TryParse(tail, out var n) && n > max)
+                        max = n;
+                }
+            }
+
+            var next = max + 1;
+            _log.LogInformation("[Seed] Next 'Test N' index computed as {Next}", next);
+            return next;
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "[Seed] GetNextTestIndexAsync failed; defaulting to 1");
+            return 1;
+        }
+    }
+
     private string NextUniqueName(HashSet<string> used)
     {
-        // Try a few times to avoid duplicates
+        // avoid duplicates
         for (int t = 0; t < 10; t++)
         {
             var name = SampleNames[_rng.Next(0, SampleNames.Length)];
             if (used.Add(name)) return name;
         }
-        // Fallback: append a number
         return $"Item {_rng.Next(100, 999)}";
     }
 
@@ -91,7 +124,7 @@ public sealed class SeedService : ISeedService
 
     private DateTime? RandomPurchasedDateUtc()
     {
-        // 70% chance we set a date within the last 7 days, else null
+        // date within the last 7 days, else null
         if (_rng.NextDouble() < 0.7)
         {
             var daysBack = _rng.Next(0, 7);
