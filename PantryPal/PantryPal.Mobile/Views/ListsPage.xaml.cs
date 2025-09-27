@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;                      
-using System.Runtime.CompilerServices;            
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using PantryPal.Core.Models;
@@ -9,14 +9,17 @@ using PantryPal.Mobile.Services;
 
 namespace PantryPal.Mobile.Views;
 
-public partial class ListsPage : ContentPage, INotifyPropertyChanged  
+public partial class ListsPage : ContentPage, INotifyPropertyChanged
 {
     private IListsService? _lists;
     private ISeedService? _seed;
     private ILogger<ListsPage>? _log;
 
-    private readonly ObservableCollection<ListSummary> _view = new();
+    // All summaries (flat)
     private List<ListSummary> _all = new();
+
+    // UI: groups (one per date)
+    private readonly ObservableCollection<DateGroup> _groups = new();
 
     private bool _suppressNextTap;
     private static readonly TimeSpan TapSuppression = TimeSpan.FromMilliseconds(150);
@@ -41,8 +44,10 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     public ListsPage()
     {
         InitializeComponent();
-        BindingContext = this;                    
-        ListsView.ItemsSource = _view;
+        BindingContext = this;
+
+        // bind groups to the CollectionView
+        ListsView.ItemsSource = _groups;
 
         LongPressCommand = new Command<ListSummary>(async s => await OnCardLongPressAsync(s));
     }
@@ -71,8 +76,9 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         {
             _log?.LogError(ex, "[ListsPage] Load failed");
             await DisplayAlert("Error", "Could not load lists.", "OK");
-            _view.Clear();
-            UpdateAllTotal();
+            _groups.Clear();
+            UpdateAllTotal(filtered: Array.Empty<ListSummary>());
+            UpdateEmptyState(query: null, filteredCount: 0);
         }
     }
 
@@ -83,18 +89,36 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             ? _all
             : _all.Where(l => l.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        _view.Clear();
-        foreach (var l in filtered) _view.Add(l);
-
-        UpdateAllTotal();
+        RebuildGroups(filtered);
+        UpdateAllTotal(filtered);
+        UpdateEmptyState(q, filtered.Count);
     }
 
-    private void UpdateAllTotal()
+    private void RebuildGroups(List<ListSummary> filtered)
+    {
+        _groups.Clear();
+
+        // Group by LOCAL date for CreatedUtc (so "Today" matches device time)
+        foreach (var g in filtered
+                     .GroupBy(s => s.CreatedUtc.ToLocalTime().Date)
+                     .OrderByDescending(g => g.Key))
+        {
+            var group = new DateGroup(g.Key);
+            foreach (var item in g.OrderByDescending(i => i.CreatedUtc))
+                group.Items.Add(item);
+
+            _groups.Add(group);
+        }
+
+        _log?.LogInformation("[ListsPage] Groups rebuilt: {GroupCount} groups", _groups.Count);
+    }
+
+    private void UpdateAllTotal(IEnumerable<ListSummary> filtered)
     {
         try
         {
-            var total = _view.Sum(s => s.TotalCost);
-            var count = _view.Count;
+            var total = filtered.Sum(s => s.TotalCost);
+            var count = filtered.Count();
 
             AllTotalCaptionText = count == 1 ? "Total (1 list)" : $"Total ({count} lists)";
             AllTotalValueText = $"${total:0.00}";
@@ -106,6 +130,15 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             AllTotalCaptionText = "Total";
             AllTotalValueText = "$0.00";
         }
+    }
+
+    // Empty-state logic: show ONLY when no lists and no search text
+    private void UpdateEmptyState(string? query, int filteredCount)
+    {
+        var isTrueEmpty = filteredCount == 0 && string.IsNullOrWhiteSpace(query);
+        EmptyStateView.IsVisible = isTrueEmpty;
+        ListsView.IsVisible = !isTrueEmpty;
+        _log?.LogInformation("[ListsPage] EmptyState isTrueEmpty={Empty}", isTrueEmpty);
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter(e.NewTextValue);
@@ -159,6 +192,7 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
                 return;
             }
 
+            // row context is ListSummary (inside the BindableLayout)
             var contextItem = (sender as BindableObject)?.BindingContext as ListSummary;
             var paramItem = e.Parameter as ListSummary;
             var summary = contextItem ?? paramItem;
@@ -248,4 +282,20 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     public new event PropertyChangedEventHandler? PropertyChanged;
     protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    // Simple group model (one card per date)
+    private sealed class DateGroup
+    {
+        public DateGroup(DateTime localDate)
+        {
+            LocalDate = localDate.Date;
+            DisplayDate = LocalDate == DateTime.Now.Date
+                ? "Today"
+                : LocalDate.ToString("dd-MM-yyyy");
+        }
+
+        public DateTime LocalDate { get; }
+        public string DisplayDate { get; }                       // <-- used by XAML
+        public ObservableCollection<ListSummary> Items { get; } = new();
+    }
 }

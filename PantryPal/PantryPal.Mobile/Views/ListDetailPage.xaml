@@ -17,9 +17,28 @@
                    TextChanged="OnSearchChanged"
                    Margin="0,0,0,8" />
 
+        <!-- Empty state (variant 1 only, static text) -->
+        <Border x:Name="EmptyStateView"
+                Grid.Row="1"
+                Style="{StaticResource CardBorder}"
+                Padding="24"
+                IsVisible="False">
+            <VerticalStackLayout Spacing="6"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center">
+                <Label Text="No items yet"
+                       Style="{StaticResource TitleLabel}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Add items from the toolbar."
+                       Style="{StaticResource MetaLabel}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+
         <CollectionView x:Name="ItemsView"
                         Grid.Row="1"
-                        SelectionMode="None">
+                        SelectionMode="None"
+                        IsVisible="True">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Border Style="{StaticResource CardBorder}"
@@ -55,13 +74,14 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
+        <!-- Total cost bar -->
         <Border Grid.Row="2"
                 Style="{StaticResource CardBorder}"
                 Padding="12"
                 Margin="0,8,0,0">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <Label Text="{Binding TotalCaptionText}" Style="{StaticResource MetaLabel}" />
-                <Label Grid.Column="1" Text="{Binding TotalValueText}" Style="{StaticResource PriceLabel}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                <Label Text="{Binding TotalCaptionText}" Style="{StaticResource MetaLabel}" VerticalOptions="Center" VerticalTextAlignment="Center" />
+                <Label Grid.Column="1" Text="{Binding TotalValueText}" Style="{StaticResource PriceLabel}" VerticalOptions="Center" VerticalTextAlignment="Center" HorizontalOptions="End" />
             </Grid>
         </Border>
     </Grid>

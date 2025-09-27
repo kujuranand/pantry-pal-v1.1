@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.ApplicationModel;                 
+using Microsoft.Maui.ApplicationModel;
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
@@ -21,49 +21,30 @@ public partial class ListDetailPage : ContentPage
     private List<GroceryListItem> _all = new();
     private GroceryList? _list;
 
-    // Suppress accidental tap after long-press
     private bool _suppressNextTap;
     private static readonly TimeSpan TapSuppression = TimeSpan.FromMilliseconds(150);
-
-    // Prevent double navigations
     private bool _navigating;
 
-    // Long-press command (used by TouchBehavior in XAML)
     public ICommand LongPressCommand { get; }
 
-    // Bindable total bar text (matches Lists page style)
     private string _totalCaptionText = "Total (0 items)";
     public string TotalCaptionText
     {
         get => _totalCaptionText;
-        set
-        {
-            if (_totalCaptionText != value)
-            {
-                _totalCaptionText = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_totalCaptionText != value) { _totalCaptionText = value; OnPropertyChanged(); } }
     }
 
     private string _totalValueText = "$0.00";
     public string TotalValueText
     {
         get => _totalValueText;
-        set
-        {
-            if (_totalValueText != value)
-            {
-                _totalValueText = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_totalValueText != value) { _totalValueText = value; OnPropertyChanged(); } }
     }
 
     public ListDetailPage()
     {
         InitializeComponent();
-        BindingContext = this;                       // enable total bar bindings
+        BindingContext = this;
         ItemsView.ItemsSource = _view;
 
         LongPressCommand = new Command<GroceryListItem>(async i => await OnItemLongPressAsync(i));
@@ -105,6 +86,7 @@ public partial class ListDetailPage : ContentPage
             await DisplayAlert("Error", "Could not load items.", "OK");
             _view.Clear();
             UpdateTotalBar();
+            UpdateEmptyState(null);
         }
     }
 
@@ -119,6 +101,7 @@ public partial class ListDetailPage : ContentPage
         foreach (var i in filtered) _view.Add(i);
 
         UpdateTotalBar();
+        UpdateEmptyState(q);
 
         _log?.LogInformation("[ListDetailPage] Filter query='{Query}' items={Count} total={Total}",
             q, filtered.Count, _view.Sum(i => i.Cost));
@@ -132,6 +115,15 @@ public partial class ListDetailPage : ContentPage
         TotalValueText = $"${total:0.00}";
     }
 
+    // Empty-state logic: show ONLY when no items and no search text
+    private void UpdateEmptyState(string? query)
+    {
+        var isTrueEmpty = _view.Count == 0 && string.IsNullOrWhiteSpace(query);
+        EmptyStateView.IsVisible = isTrueEmpty;
+        ItemsView.IsVisible = !isTrueEmpty;
+        _log?.LogInformation("[ListDetailPage] EmptyState isTrueEmpty={Empty}", isTrueEmpty);
+    }
+
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter(e.NewTextValue);
 
     private async void OnAddItem(object sender, EventArgs e)
@@ -141,7 +133,6 @@ public partial class ListDetailPage : ContentPage
             if (_navigating) return;
             _navigating = true;
 
-            // Use querystring so [QueryProperty] continues to work
             await MainThread.InvokeOnMainThreadAsync(() =>
                 Shell.Current.GoToAsync($"{nameof(ItemEditPage)}?ListId={ListId}")
             );
@@ -158,7 +149,6 @@ public partial class ListDetailPage : ContentPage
         }
     }
 
-    // Tap: open editor (respects suppression and nav fence)
     private async void OnCardTapped(object sender, TappedEventArgs e)
     {
         try
@@ -170,7 +160,6 @@ public partial class ListDetailPage : ContentPage
                 return;
             }
 
-            // Resolve from sender's BindingContext first (robust with virtualization)
             var ctxItem = (sender as BindableObject)?.BindingContext as GroceryListItem;
             var paramItem = e.Parameter as GroceryListItem;
             var item = ctxItem ?? paramItem;
@@ -198,7 +187,6 @@ public partial class ListDetailPage : ContentPage
         }
     }
 
-    // Long-press: ActionSheet (Edit/Delete) + suppress following tap
     private async Task OnItemLongPressAsync(GroceryListItem item)
     {
         try

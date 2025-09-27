@@ -27,19 +27,24 @@ public sealed class SeedService : ISeedService
 
     public async Task<GroceryList> CreateSampleListAsync(string? name = null, int? itemCount = null, CancellationToken ct = default)
     {
-        // list name with increment
+        // Name: "LIst N" unless caller provides one
         var listName = string.IsNullOrWhiteSpace(name)
-            ? $"Test {await GetNextTestIndexAsync()}"              
+            ? $"List {await GetNextTestIndexAsync()}"
             : name.Trim();
 
+        // 3–10 items (or clamp caller's request)
         var count = itemCount.HasValue ? Math.Clamp(itemCount.Value, 3, 10) : _rng.Next(3, 11);
 
-        _log.LogInformation("[Seed] Creating sample list '{Name}' with {Count} items", listName, count);
+        // Pick a list date in the last ~90 days (3 months), midnight UTC
+        var listDateUtc = RandomRecentUtc(daysBackInclusive: 90);
 
-        // Create list
-        var list = await _lists.CreateAsync(listName);
+        _log.LogInformation("[Seed] Creating sample list '{Name}' on {Date:u} with {Count} items",
+            listName, listDateUtc, count);
 
-        // random picks
+        // Create the list with our chosen CreatedUtc
+        var list = await _lists.CreateAsync(listName, createdUtc: listDateUtc);
+
+        // Add items (PurchasedDate = list date for consistent grouping)
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < count; i++)
         {
@@ -47,21 +52,20 @@ public sealed class SeedService : ISeedService
 
             var itemName = NextUniqueName(used);
             var cost = RandomCost();
-            var purchased = RandomPurchasedDateUtc();
 
             var item = new GroceryListItem
             {
                 ListId = list.Id,
                 Name = itemName,
                 Cost = cost,
-                PurchasedDate = purchased
+                PurchasedDate = listDateUtc
             };
 
             try
             {
                 await _items.AddOrUpdateAsync(item);
-                _log.LogInformation("[Seed] Added item id={Id} name='{Name}' cost={Cost:0.00} purchased={Purchased}",
-                    item.Id, item.Name, item.Cost, item.PurchasedDate?.ToString("u"));
+                _log.LogInformation("[Seed] Added item id={Id} name='{Name}' cost={Cost:0.00} purchased={Purchased:u}",
+                    item.Id, item.Name, item.Cost, item.PurchasedDate);
             }
             catch (Exception ex)
             {
@@ -70,7 +74,7 @@ public sealed class SeedService : ISeedService
             }
         }
 
-        _log.LogInformation("[Seed] Completed sample list id={Id} '{Name}'", list.Id, list.Name);
+        _log.LogInformation("[Seed] Completed sample list id={Id} '{Name}' on {Date:u}", list.Id, list.Name, listDateUtc);
         return list;
     }
 
@@ -84,7 +88,7 @@ public sealed class SeedService : ISeedService
 
             foreach (var l in all)
             {
-                const string prefix = "Test ";
+                const string prefix = "List ";
                 if (l.Name?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true)
                 {
                     var tail = l.Name.Substring(prefix.Length).Trim();
@@ -94,7 +98,7 @@ public sealed class SeedService : ISeedService
             }
 
             var next = max + 1;
-            _log.LogInformation("[Seed] Next 'Test N' index computed as {Next}", next);
+            _log.LogInformation("[Seed] Next 'List N' index computed as {Next}", next);
             return next;
         }
         catch (Exception ex)
@@ -106,7 +110,6 @@ public sealed class SeedService : ISeedService
 
     private string NextUniqueName(HashSet<string> used)
     {
-        // avoid duplicates
         for (int t = 0; t < 10; t++)
         {
             var name = SampleNames[_rng.Next(0, SampleNames.Length)];
@@ -117,19 +120,15 @@ public sealed class SeedService : ISeedService
 
     private decimal RandomCost()
     {
-        // 1.50 to 25.00
+        // $1.50–$25.00
         var cents = _rng.Next(150, 2501);
         return Math.Round(cents / 100m, 2);
     }
 
-    private DateTime? RandomPurchasedDateUtc()
+    private DateTime RandomRecentUtc(int daysBackInclusive)
     {
-        // date within the last 7 days, else null
-        if (_rng.NextDouble() < 0.7)
-        {
-            var daysBack = _rng.Next(0, 7);
-            return DateTime.UtcNow.Date.AddDays(-daysBack);
-        }
-        return null;
+        // random day 0..daysBackInclusive in the past, at 00:00 UTC
+        var back = _rng.Next(0, Math.Max(0, daysBackInclusive) + 1);
+        return DateTime.UtcNow.Date.AddDays(-back);
     }
 }

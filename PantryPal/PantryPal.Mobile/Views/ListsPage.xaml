@@ -5,7 +5,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     x:Name="ListsPageRoot"
-    Title="Lists">
+    Title="My Lists"
+    BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource OffBlack}}">
+    <!-- light gray bg -->
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="New" Clicked="OnNewList" />
@@ -20,58 +22,108 @@
                    TextChanged="OnSearchChanged"
                    Margin="0,0,0,8" />
 
-        <!-- Lists -->
+        <!-- Empty state (variant 1 only) -->
+        <Border x:Name="EmptyStateView"
+                Grid.Row="1"
+                Style="{StaticResource CardBorder}"
+                BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
+                StrokeThickness="0"                      
+            Padding="24"
+                IsVisible="False">
+            <VerticalStackLayout Spacing="6"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center">
+                <Label Text="No lists yet"
+                       Style="{StaticResource TitleLabel}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Create your first shopping list from the toolbar."
+                       Style="{StaticResource MetaLabel}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Grouped CARDS: one card per date; each card contains that date's lists with dividers -->
         <CollectionView x:Name="ListsView"
-                        Grid.Row="1"
-                        SelectionMode="None">
+                Grid.Row="1"
+                SelectionMode="None"
+                IsVisible="True">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
+                    <!-- Card for one date group -->
                     <Border Style="{StaticResource CardBorder}"
-                            BindingContext="{Binding .}"
-                            Margin="0,8,0,0">
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                            <VerticalStackLayout Spacing="2">
-                                <Label Text="{Binding Name}" Style="{StaticResource TitleLabel}" />
-                                <HorizontalStackLayout Spacing="8">
-                                    <Label Text="{Binding CreatedUtc, StringFormat='Created {0:yyyy-MM-dd}'}"
-                                           Style="{StaticResource MetaLabel}" />
-                                    <Border Style="{StaticResource Chip}">
-                                        <Label Text="{Binding ItemCount, StringFormat='\{0\} items'}"
-                                               Style="{StaticResource MetaLabel}" />
-                                    </Border>
-                                </HorizontalStackLayout>
+                    BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
+                    StrokeThickness="0"
+                    Margin="0,8,0,0"
+                    Padding="12"
+                    BindingContext="{Binding .}">
+                        <VerticalStackLayout Spacing="8">
+
+                            <!-- Date header: shows 'Today' when the local date is today -->
+                            <Label Text="{Binding DisplayDate}"
+                           Style="{StaticResource MetaLabel}" />
+
+                            <!-- Rows for this date -->
+                            <VerticalStackLayout Spacing="0"
+                                         BindableLayout.ItemsSource="{Binding Items}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <!-- Row + bottom divider -->
+                                        <Grid RowDefinitions="Auto,1" Padding="0,8">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"
+                                          BindingContext="{Binding .}">
+                                                <VerticalStackLayout Spacing="2">
+                                                    <Label Text="{Binding Name}" Style="{StaticResource TitleLabel}" />
+                                                    <HorizontalStackLayout Spacing="8">
+                                                        <Border Style="{StaticResource Chip}">
+                                                            <Label Text="{Binding ItemCount, StringFormat='\{0\} items'}"
+                                                           Style="{StaticResource MetaLabel}" />
+                                                        </Border>
+                                                    </HorizontalStackLayout>
+                                                </VerticalStackLayout>
+
+                                                <Label Grid.Column="1"
+                                               Text="{Binding TotalCost, StringFormat='${0:0.00}'}"
+                                               Style="{StaticResource PriceLabel}"
+                                               VerticalOptions="Center" />
+                                            </Grid>
+
+                                            <BoxView Grid.Row="1"
+                                             HeightRequest="1"
+                                             HorizontalOptions="Fill"
+                                             BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray600}}" />
+
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                            NumberOfTapsRequired="1"
+                                            Tapped="OnCardTapped"
+                                            CommandParameter="{Binding .}" />
+                                            </Grid.GestureRecognizers>
+                                            <Grid.Behaviors>
+                                                <toolkit:TouchBehavior
+                                            LongPressCommand="{Binding Source={x:Reference ListsPageRoot}, Path=LongPressCommand}"
+                                            LongPressCommandParameter="{Binding .}" />
+                                            </Grid.Behaviors>
+                                        </Grid>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
 
-                            <Label Grid.Column="1"
-                                   Text="{Binding TotalCost, StringFormat='${0:0.00}'}"
-                                   Style="{StaticResource PriceLabel}"
-                                   VerticalOptions="Center" />
-
-                            <Grid.GestureRecognizers>
-                                <TapGestureRecognizer
-                                    NumberOfTapsRequired="1"
-                                    Tapped="OnCardTapped"
-                                    CommandParameter="{Binding .}" />
-                            </Grid.GestureRecognizers>
-                            <Grid.Behaviors>
-                                <toolkit:TouchBehavior
-                                    LongPressCommand="{Binding Source={x:Reference ListsPageRoot}, Path=LongPressCommand}"
-                                    LongPressCommandParameter="{Binding .}" />
-                            </Grid.Behaviors>
-                        </Grid>
+                        </VerticalStackLayout>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <!-- Total cost bar -->
+        <!-- Total cost bar (unchanged) -->
         <Border Grid.Row="2"
                 Style="{StaticResource CardBorder}"
+                BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
+                StrokeThickness="0"
                 Padding="12"
                 Margin="0,8,0,0">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <Label Text="{Binding AllTotalCaptionText}" Style="{StaticResource MetaLabel}" />
-                <Label Grid.Column="1" Text="{Binding AllTotalValueText}" Style="{StaticResource PriceLabel}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                <Label Text="{Binding AllTotalCaptionText}" Style="{StaticResource MetaLabel}" VerticalOptions="Center" VerticalTextAlignment="Center"/>
+                <Label Grid.Column="1" Text="{Binding AllTotalValueText}" Style="{StaticResource PriceLabel}" VerticalOptions="Center" VerticalTextAlignment="Center" HorizontalOptions="End"/>
             </Grid>
         </Border>
     </Grid>
