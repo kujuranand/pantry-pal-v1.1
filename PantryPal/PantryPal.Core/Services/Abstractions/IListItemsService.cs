@@ -9,4 +9,5 @@ public interface IListItemsService
     Task AddOrUpdateAsync(GroceryListItem item);
     Task DeleteAsync(int id);
     Task<decimal> GetTotalCostAsync(int listId);
+    Task SetPurchasedForListItemsAsync(int listId, DateTime? purchasedUtc);
 }

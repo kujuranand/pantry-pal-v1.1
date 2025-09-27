@@ -109,4 +109,22 @@ public sealed class ListItemsService : IListItemsService
             throw;
         }
     }
+
+    public async Task SetPurchasedForListItemsAsync(int listId, DateTime? purchasedUtc)
+    {
+        try
+        {
+            var rows = await _db.Connection.ExecuteAsync(
+                "UPDATE GroceryListItems SET PurchasedDate = ? WHERE ListId = ?",
+                purchasedUtc, listId);
+
+            _logger.LogInformation("[ItemsService] SetPurchasedForListItems listId={ListId} purchased={Purchased:u} rows={Rows}",
+                listId, purchasedUtc, rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ItemsService] SetPurchasedForListItems listId={ListId} failed", listId);
+            throw;
+        }
+    }
 }

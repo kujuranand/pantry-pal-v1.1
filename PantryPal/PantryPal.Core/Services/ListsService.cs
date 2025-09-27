@@ -8,11 +8,13 @@ namespace PantryPal.Core.Services;
 public sealed class ListsService : IListsService
 {
     private readonly PantryDatabase _db;
+    private readonly IListItemsService _items;                
     private readonly ILogger<ListsService> _logger;
 
-    public ListsService(PantryDatabase db, ILogger<ListsService> logger)
+    public ListsService(PantryDatabase db, IListItemsService items, ILogger<ListsService> logger)
     {
         _db = db;
+        _items = items;                                       
         _logger = logger;
     }
 
@@ -50,7 +52,8 @@ public sealed class ListsService : IListsService
         }
     }
 
-    public async Task<GroceryList> CreateAsync(string name, DateTime? createdUtc = null)
+    
+    public async Task<GroceryList> CreateAsync(string name, DateTime? createdUtc = null, DateTime? purchasedUtc = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("List name is required.", nameof(name));
@@ -60,10 +63,12 @@ public sealed class ListsService : IListsService
             var entity = new GroceryList
             {
                 Name = name.Trim(),
-                CreatedUtc = createdUtc ?? DateTime.UtcNow
+                CreatedUtc = createdUtc ?? DateTime.UtcNow,
+                PurchasedUtc = purchasedUtc
             };
             await _db.Connection.InsertAsync(entity);
-            _logger.LogInformation("[ListsService] CreateAsync name='{Name}' id={Id}", entity.Name, entity.Id);
+            _logger.LogInformation("[ListsService] CreateAsync name='{Name}' id={Id} created={Created:u} purchased={Purchased:u}",
+                entity.Name, entity.Id, entity.CreatedUtc, entity.PurchasedUtc);
             return entity;
         }
         catch (Exception ex)
@@ -93,6 +98,37 @@ public sealed class ListsService : IListsService
         }
     }
 
+    
+    public async Task UpdateAsync(int id, string name, DateTime? purchasedUtc)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name is required.", nameof(name));
+
+        try
+        {
+            var list = await GetAsync(id) ?? throw new InvalidOperationException("List not found.");
+
+            var oldName = list.Name;
+            var oldPurchased = list.PurchasedUtc;
+
+            list.Name = name.Trim();
+            list.PurchasedUtc = purchasedUtc;
+
+            await _db.Connection.UpdateAsync(list);
+
+            
+            await _items.SetPurchasedForListItemsAsync(list.Id, purchasedUtc);
+
+            _logger.LogInformation("[ListsService] UpdateAsync id={Id} name '{Old}' -> '{New}', purchased {OldDate:u} -> {NewDate:u}",
+                id, oldName, list.Name, oldPurchased, purchasedUtc);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ListsService] UpdateAsync id={Id} failed", id);
+            throw;
+        }
+    }
+
     public async Task DeleteAsync(int id)
     {
         try
@@ -118,6 +154,7 @@ SELECT
   l.Id                  AS Id,
   l.Name                AS Name,
   l.CreatedUtc          AS CreatedUtc,
+  l.PurchasedUtc        AS PurchasedUtc,
   COUNT(i.Id)           AS ItemCount,
   IFNULL(SUM(i.Cost),0) AS TotalCost
 FROM GroceryLists l
