@@ -7,7 +7,6 @@
     x:Name="ListsPageRoot"
     Title="My Lists"
     BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource OffBlack}}">
-    <!-- light gray bg -->
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="New" Clicked="OnNewList" />
@@ -16,19 +15,32 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Padding="12" RowSpacing="12">
 
-        <SearchBar x:Name="SearchBar"
-                   Grid.Row="0"
-                   Placeholder="Search lists..."
-                   TextChanged="OnSearchChanged"
-                   Margin="0,0,0,8" />
+        <VerticalStackLayout Grid.Row="0" Spacing="8">
+            <SearchBar x:Name="SearchBar"
+                       Placeholder="Search lists..."
+                       TextChanged="OnSearchChanged"
+                       Margin="0,0,0,0" />
+            <Grid ColumnDefinitions="Auto,Auto,*">
+                <Label Text="Sort by" Style="{StaticResource MetaLabel}" VerticalOptions="Center" />
+                <Picker x:Name="SortPicker"
+                        Grid.Column="1"
+                        SelectedIndexChanged="OnSortChanged"
+                        HorizontalOptions="Start"
+                        WidthRequest="160">
+                    <Picker.Items>
+                        <x:String>Created</x:String>
+                        <x:String>Purchased</x:String>
+                    </Picker.Items>
+                </Picker>
+            </Grid>
+        </VerticalStackLayout>
 
-        <!-- Empty state (variant 1 only) -->
         <Border x:Name="EmptyStateView"
                 Grid.Row="1"
                 Style="{StaticResource CardBorder}"
                 BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
-                StrokeThickness="0"                      
-            Padding="24"
+                StrokeThickness="0"
+                Padding="24"
                 IsVisible="False">
             <VerticalStackLayout Spacing="6"
                                  HorizontalOptions="Center"
@@ -42,79 +54,70 @@
             </VerticalStackLayout>
         </Border>
 
-        <!-- Grouped CARDS: one card per date; each card contains that date's lists with dividers -->
         <CollectionView x:Name="ListsView"
-                Grid.Row="1"
-                SelectionMode="None"
-                IsVisible="True">
+                        Grid.Row="1"
+                        SelectionMode="None"
+                        IsVisible="True">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <!-- Card for one date group -->
                     <Border Style="{StaticResource CardBorder}"
-                    BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
-                    StrokeThickness="0"
-                    Margin="0,8,0,0"
-                    Padding="12"
-                    BindingContext="{Binding .}">
+                            BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"
+                            StrokeThickness="0"
+                            Margin="0,8,0,0"
+                            Padding="12"
+                            BindingContext="{Binding .}">
                         <VerticalStackLayout Spacing="8">
-
-                            <!-- Date header: shows 'Today' when the local date is today -->
                             <Label Text="{Binding DisplayDate}"
-                           Style="{StaticResource MetaLabel}" />
-
-                            <!-- Rows for this date -->
+                                   Style="{StaticResource MetaLabel}" />
                             <VerticalStackLayout Spacing="0"
-                                         BindableLayout.ItemsSource="{Binding Items}">
+                                                 BindableLayout.ItemsSource="{Binding Items}">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate>
-                                        <!-- Row + bottom divider -->
                                         <Grid RowDefinitions="Auto,1" Padding="0,8">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"
-                                          BindingContext="{Binding .}">
+                                                  BindingContext="{Binding .}">
                                                 <VerticalStackLayout Spacing="2">
                                                     <Label Text="{Binding Name}" Style="{StaticResource TitleLabel}" />
                                                     <HorizontalStackLayout Spacing="8">
                                                         <Border Style="{StaticResource Chip}">
                                                             <Label Text="{Binding ItemCount, StringFormat='\{0\} items'}"
-                                                           Style="{StaticResource MetaLabel}" />
+                                                                   Style="{StaticResource MetaLabel}" />
                                                         </Border>
                                                     </HorizontalStackLayout>
                                                 </VerticalStackLayout>
 
                                                 <Label Grid.Column="1"
-                                               Text="{Binding TotalCost, StringFormat='${0:0.00}'}"
-                                               Style="{StaticResource PriceLabel}"
-                                               VerticalOptions="Center" />
+                                                       Text="{Binding TotalCost, StringFormat='${0:0.00}'}"
+                                                       Style="{StaticResource PriceLabel}"
+                                                       VerticalOptions="Center" />
                                             </Grid>
 
                                             <BoxView Grid.Row="1"
-                                             HeightRequest="1"
-                                             HorizontalOptions="Fill"
-                                             BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray600}}" />
+                                                     HeightRequest="1"
+                                                     HorizontalOptions="Fill"
+                                                     BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray600}}" />
 
                                             <Grid.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                            NumberOfTapsRequired="1"
-                                            Tapped="OnCardTapped"
-                                            CommandParameter="{Binding .}" />
+                                                    NumberOfTapsRequired="1"
+                                                    Tapped="OnCardTapped"
+                                                    CommandParameter="{Binding .}" />
                                             </Grid.GestureRecognizers>
                                             <Grid.Behaviors>
                                                 <toolkit:TouchBehavior
-                                            LongPressCommand="{Binding Source={x:Reference ListsPageRoot}, Path=LongPressCommand}"
-                                            LongPressCommandParameter="{Binding .}" />
+                                                    LongPressCommand="{Binding Source={x:Reference ListsPageRoot}, Path=LongPressCommand}"
+                                                    LongPressCommandParameter="{Binding .}" />
                                             </Grid.Behaviors>
                                         </Grid>
                                     </DataTemplate>
                                 </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
-
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <!-- Total cost bar (unchanged) -->
         <Border Grid.Row="2"
                 Style="{StaticResource CardBorder}"
                 BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}"

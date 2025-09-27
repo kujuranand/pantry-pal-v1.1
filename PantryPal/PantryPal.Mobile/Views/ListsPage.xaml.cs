@@ -15,16 +15,12 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     private ISeedService? _seed;
     private ILogger<ListsPage>? _log;
 
-    // All summaries (flat)
     private List<ListSummary> _all = new();
-
-    // UI: groups (one per date)
     private readonly ObservableCollection<DateGroup> _groups = new();
 
     private bool _suppressNextTap;
     private static readonly TimeSpan TapSuppression = TimeSpan.FromMilliseconds(150);
 
-    // total cost bar
     private string _allTotalCaptionText = "Total";
     public string AllTotalCaptionText
     {
@@ -39,17 +35,17 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         set { if (_allTotalValueText != value) { _allTotalValueText = value; OnPropertyChanged(); } }
     }
 
+    private GroupKey _groupKey = GroupKey.Created;
+
     public ICommand LongPressCommand { get; }
 
     public ListsPage()
     {
         InitializeComponent();
         BindingContext = this;
-
-        // bind groups to the CollectionView
         ListsView.ItemsSource = _groups;
-
         LongPressCommand = new Command<ListSummary>(async s => await OnCardLongPressAsync(s));
+        SortPicker.SelectedIndex = 0;
     }
 
     protected override async void OnAppearing()
@@ -60,7 +56,6 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         _lists ??= ServiceHelper.Get<IListsService>();
         _seed ??= ServiceHelper.Get<ISeedService>();
 
-        _log.LogInformation("[ListsPage] Appearing");
         await LoadAsync();
     }
 
@@ -69,16 +64,14 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         try
         {
             _all = (await _lists!.GetListSummariesAsync()).ToList();
-            _log?.LogInformation("[ListsPage] Loaded summaries count={Count}", _all.Count);
             ApplyFilter(SearchBar.Text);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Load failed");
             await DisplayAlert("Error", "Could not load lists.", "OK");
             _groups.Clear();
-            UpdateAllTotal(filtered: Array.Empty<ListSummary>());
-            UpdateEmptyState(query: null, filteredCount: 0);
+            UpdateAllTotal(Array.Empty<ListSummary>());
+            UpdateEmptyState(null, 0);
         }
     }
 
@@ -98,50 +91,59 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     {
         _groups.Clear();
 
-        // Group by LOCAL date for CreatedUtc (so "Today" matches device time)
-        foreach (var g in filtered
-                     .GroupBy(s => s.CreatedUtc.ToLocalTime().Date)
-                     .OrderByDescending(g => g.Key))
+        IEnumerable<IGrouping<DateTime, ListSummary>> grouped;
+
+        if (_groupKey == GroupKey.Created)
+        {
+            grouped = filtered
+                .GroupBy(s => s.CreatedUtc.ToLocalTime().Date)
+                .OrderByDescending(g => g.Key);
+        }
+        else
+        {
+            grouped = filtered
+                .GroupBy(s => ((s.PurchasedUtc ?? s.CreatedUtc).ToLocalTime().Date))
+                .OrderByDescending(g => g.Key);
+        }
+
+        foreach (var g in grouped)
         {
             var group = new DateGroup(g.Key);
-            foreach (var item in g.OrderByDescending(i => i.CreatedUtc))
+            IEnumerable<ListSummary> ordered = _groupKey == GroupKey.Created
+                ? g.OrderByDescending(i => i.CreatedUtc)
+                : g.OrderByDescending(i => i.PurchasedUtc ?? i.CreatedUtc);
+
+            foreach (var item in ordered)
                 group.Items.Add(item);
 
             _groups.Add(group);
         }
-
-        _log?.LogInformation("[ListsPage] Groups rebuilt: {GroupCount} groups", _groups.Count);
     }
 
     private void UpdateAllTotal(IEnumerable<ListSummary> filtered)
     {
-        try
-        {
-            var total = filtered.Sum(s => s.TotalCost);
-            var count = filtered.Count();
+        var total = filtered.Sum(s => s.TotalCost);
+        var count = filtered.Count();
 
-            AllTotalCaptionText = count == 1 ? "Total (1 list)" : $"Total ({count} lists)";
-            AllTotalValueText = $"${total:0.00}";
-            _log?.LogInformation("[ListsPage] AllTotal updated count={Count} total={Total}", count, total);
-        }
-        catch (Exception ex)
-        {
-            _log?.LogError(ex, "[ListsPage] UpdateAllTotal failed");
-            AllTotalCaptionText = "Total";
-            AllTotalValueText = "$0.00";
-        }
+        AllTotalCaptionText = count == 1 ? "Total (1 list)" : $"Total ({count} lists)";
+        AllTotalValueText = $"${total:0.00}";
     }
 
-    // Empty-state logic: show ONLY when no lists and no search text
     private void UpdateEmptyState(string? query, int filteredCount)
     {
         var isTrueEmpty = filteredCount == 0 && string.IsNullOrWhiteSpace(query);
         EmptyStateView.IsVisible = isTrueEmpty;
         ListsView.IsVisible = !isTrueEmpty;
-        _log?.LogInformation("[ListsPage] EmptyState isTrueEmpty={Empty}", isTrueEmpty);
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilter(e.NewTextValue);
+
+    private void OnSortChanged(object? sender, EventArgs e)
+    {
+        var idx = SortPicker.SelectedIndex;
+        _groupKey = idx == 1 ? GroupKey.Purchased : GroupKey.Created;
+        ApplyFilter(SearchBar.Text);
+    }
 
     private async void OnNewList(object sender, EventArgs e)
     {
@@ -153,9 +155,8 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             await _lists!.CreateAsync(name.Trim());
             await LoadAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Create failed");
             await DisplayAlert("Error", "Could not create list.", "OK");
         }
     }
@@ -165,8 +166,6 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         try
         {
             var list = await _seed!.CreateSampleListAsync(name: null, itemCount: null);
-            _log?.LogInformation("[ListsPage] Seeded list id={Id} name='{Name}'", list.Id, list.Name);
-
             await LoadAsync();
 
             var go = await DisplayActionSheet($"Seeded '{list.Name}'", "Stay", null, "Open");
@@ -175,9 +174,8 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
                 await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={list.Id}");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Seeding failed");
             await DisplayAlert("Error", "Could not seed test data.", "OK");
         }
     }
@@ -186,29 +184,17 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     {
         try
         {
-            if (_suppressNextTap)
-            {
-                _log?.LogInformation("[ListsPage] Tap suppressed after long-press.");
-                return;
-            }
+            if (_suppressNextTap) return;
 
-            // row context is ListSummary (inside the BindableLayout)
             var contextItem = (sender as BindableObject)?.BindingContext as ListSummary;
             var paramItem = e.Parameter as ListSummary;
             var summary = contextItem ?? paramItem;
+            if (summary is null) return;
 
-            if (summary is null)
-            {
-                _log?.LogWarning("[ListsPage] OnCardTapped: null item context");
-                return;
-            }
-
-            _log?.LogInformation("[ListsPage] Tap open id={Id} name='{Name}'", summary.Id, summary.Name);
             await Shell.Current.GoToAsync($"{nameof(ListDetailPage)}?ListId={summary.Id}");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Navigation to ListDetail failed");
             await DisplayAlert("Error", "Navigation failed.", "OK");
         }
     }
@@ -219,7 +205,6 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         {
             _suppressNextTap = true;
 
-            _log?.LogInformation("[ListsPage] Long-press id={Id} name='{Name}'", s.Id, s.Name);
             var choice = await DisplayActionSheet(
                 $"Options for '{s.Name}'",
                 "Cancel", null,
@@ -233,10 +218,6 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             {
                 await DeleteAsync(s);
             }
-        }
-        catch (Exception ex)
-        {
-            _log?.LogError(ex, "[ListsPage] Long-press action failed id={Id}", s.Id);
         }
         finally
         {
@@ -255,9 +236,8 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             await _lists!.RenameAsync(s.Id, newName.Trim());
             await LoadAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Rename failed id={Id}", s.Id);
             await DisplayAlert("Error", "Could not rename list.", "OK");
         }
     }
@@ -272,9 +252,8 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             await _lists!.DeleteAsync(s.Id);
             await LoadAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _log?.LogError(ex, "[ListsPage] Delete failed id={Id}", s.Id);
             await DisplayAlert("Error", "Could not delete list.", "OK");
         }
     }
@@ -283,7 +262,8 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
     protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-    // Simple group model (one card per date)
+    private enum GroupKey { Created, Purchased }
+
     private sealed class DateGroup
     {
         public DateGroup(DateTime localDate)
@@ -295,7 +275,7 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         }
 
         public DateTime LocalDate { get; }
-        public string DisplayDate { get; }                       // <-- used by XAML
+        public string DisplayDate { get; }
         public ObservableCollection<ListSummary> Items { get; } = new();
     }
 }
