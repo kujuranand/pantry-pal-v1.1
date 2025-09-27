@@ -13,4 +13,6 @@ public class GroceryList
 
     [NotNull]
     public DateTime CreatedUtc { get; set; }
+
+    public DateTime? PurchasedUtc { get; set; }
 }

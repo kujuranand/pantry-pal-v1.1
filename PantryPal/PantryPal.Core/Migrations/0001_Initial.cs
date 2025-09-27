@@ -1,4 +1,5 @@
-﻿using SQLite;
+﻿using System;
+using SQLite;
 using PantryPal.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,6 @@ internal sealed class _0001_Initial : IMigration
 
     public async Task UpAsync(SQLiteAsyncConnection conn)
     {
-        // obtain optional logger from the connection's tracer if available (best-effort)
         ILogger? log = null;
 
         try
@@ -22,9 +22,10 @@ internal sealed class _0001_Initial : IMigration
             log?.LogInformation("[Migration 0001] Create GroceryLists");
             await conn.ExecuteAsync(@"
 CREATE TABLE IF NOT EXISTS GroceryLists (
-  Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  Name        TEXT    NOT NULL,
-  CreatedUtc  TEXT    NOT NULL
+  Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  Name          TEXT    NOT NULL,
+  CreatedUtc    TEXT    NOT NULL,
+  PurchasedUtc  TEXT    NULL
 );");
 
             // items
@@ -45,13 +46,11 @@ CREATE TABLE IF NOT EXISTS GroceryListItems (
 CREATE INDEX IF NOT EXISTS IX_GroceryListItems_ListId
 ON GroceryListItems(ListId);");
 
-            // keep sqlite-net metadata aligned (safe if already created)
             await conn.CreateTableAsync<GroceryList>();
             await conn.CreateTableAsync<GroceryListItem>();
         }
         catch (Exception ex)
         {
-            // we might not have an ILogger here; use Debug as a fallback
             System.Diagnostics.Debug.WriteLine($"[Migration 0001] Failed: {ex}");
             throw;
         }
