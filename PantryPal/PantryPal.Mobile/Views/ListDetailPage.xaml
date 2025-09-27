@@ -3,38 +3,86 @@
     x:Class="PantryPal.Mobile.Views.ListDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    x:Name="ListDetailRoot"
     Title="List">
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Add" Clicked="OnAddItem" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*,Auto" Padding="12">
-        <SearchBar x:Name="SearchBar" Placeholder="Search items..." TextChanged="OnSearchChanged" />
+    <Grid RowDefinitions="Auto,*,Auto" Padding="12" RowSpacing="12">
+        <SearchBar x:Name="SearchBar"
+                   Placeholder="Search items..."
+                   TextChanged="OnSearchChanged"
+                   Margin="0,0,0,8" />
 
-        <CollectionView x:Name="ItemsView" Grid.Row="1"
-                        SelectionMode="Single" SelectionChanged="OnItemSelected">
+        <!-- Empty state (variant 1 only, static text) -->
+        <Border x:Name="EmptyStateView"
+                Grid.Row="1"
+                Style="{StaticResource CardBorder}"
+                Padding="24"
+                IsVisible="False">
+            <VerticalStackLayout Spacing="6"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center">
+                <Label Text="No items yet"
+                       Style="{StaticResource TitleLabel}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Add items from the toolbar."
+                       Style="{StaticResource MetaLabel}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView x:Name="ItemsView"
+                        Grid.Row="1"
+                        SelectionMode="None"
+                        IsVisible="True">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Grid Padding="8" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
-                        <Label Text="{Binding Name}" FontAttributes="Bold" />
-                        <Label Grid.Row="1"
-                               Text="{Binding PurchasedDate, StringFormat='Purchased {0:yyyy-MM-dd}'}"
-                               FontSize="12" Opacity="0.7"/>
-                        <Label Grid.Column="1" Text="{Binding Cost, StringFormat='${0:0.00}'}"
-                               VerticalTextAlignment="Center"/>
-                        <HorizontalStackLayout Grid.Column="1" Grid.Row="1" Spacing="8">
-                            <Button Text="Edit" Clicked="OnEditClicked" CommandParameter="{Binding .}" />
-                            <Button Text="Delete" Clicked="OnDeleteClicked" CommandParameter="{Binding .}" />
-                        </HorizontalStackLayout>
-                    </Grid>
+                    <Border Style="{StaticResource CardBorder}"
+                            BindingContext="{Binding .}"
+                            Margin="0,8,0,0">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding Name}" Style="{StaticResource TitleLabel}" />
+                                <Label Text="{Binding PurchasedDate, StringFormat='Purchased {0:yyyy-MM-dd}'}"
+                                       Style="{StaticResource MetaLabel}" />
+                            </VerticalStackLayout>
+
+                            <Label Grid.Column="1"
+                                   Text="{Binding Cost, StringFormat='${0:0.00}'}"
+                                   Style="{StaticResource PriceLabel}"
+                                   VerticalOptions="Center" />
+
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    NumberOfTapsRequired="1"
+                                    Tapped="OnCardTapped"
+                                    CommandParameter="{Binding .}" />
+                            </Grid.GestureRecognizers>
+                            <Grid.Behaviors>
+                                <toolkit:TouchBehavior
+                                    LongPressCommand="{Binding Source={x:Reference ListDetailRoot}, Path=LongPressCommand}"
+                                    LongPressCommandParameter="{Binding .}" />
+                            </Grid.Behaviors>
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" Padding="4,8,4,0">
-            <Label Text="Total:" FontAttributes="Bold"/>
-            <Label x:Name="TotalLabel" Grid.Column="1" HorizontalOptions="End" />
-        </Grid>
+        <!-- Total cost bar -->
+        <Border Grid.Row="2"
+                Style="{StaticResource CardBorder}"
+                Padding="12"
+                Margin="0,8,0,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                <Label Text="{Binding TotalCaptionText}" Style="{StaticResource MetaLabel}" VerticalOptions="Center" VerticalTextAlignment="Center" />
+                <Label Grid.Column="1" Text="{Binding TotalValueText}" Style="{StaticResource PriceLabel}" VerticalOptions="Center" VerticalTextAlignment="Center" HorizontalOptions="End" />
+            </Grid>
+        </Border>
     </Grid>
 </ContentPage>

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using CommunityToolkit.Maui;
 using PantryPal.Core.Data;
 using PantryPal.Core.Services;
 using PantryPal.Core.Services.Abstractions;
@@ -19,6 +20,7 @@ namespace PantryPal.Mobile
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(f =>
                 {
                     f.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

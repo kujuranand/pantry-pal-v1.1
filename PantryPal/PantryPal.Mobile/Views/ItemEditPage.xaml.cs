@@ -1,14 +1,13 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Controls;                    
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
-using Microsoft.Extensions.Logging;
 
 namespace PantryPal.Mobile.Views;
 
-[QueryProperty(nameof(ListId), nameof(ListId))]
-[QueryProperty(nameof(ItemId), nameof(ItemId))]
-public partial class ItemEditPage : ContentPage
+public partial class ItemEditPage : ContentPage, IQueryAttributable
 {
     public int ListId { get; set; }
     public int? ItemId { get; set; }
@@ -22,6 +21,24 @@ public partial class ItemEditPage : ContentPage
         InitializeComponent();
     }
 
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query is null) return;
+
+        if (query.TryGetValue(nameof(ListId), out var listVal))
+        {
+            if (listVal is int li) ListId = li;
+            else if (listVal is string ls && int.TryParse(ls, out var lip)) ListId = lip;
+        }
+
+        if (query.TryGetValue(nameof(ItemId), out var itemVal))
+        {
+            if (itemVal is int ii) ItemId = ii;
+            else if (itemVal is string istring && int.TryParse(istring, out var iip)) ItemId = iip;
+            else ItemId = null; 
+        }
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -29,12 +46,14 @@ public partial class ItemEditPage : ContentPage
         _log ??= ServiceHelper.Get<ILogger<ItemEditPage>>();
         _items ??= ServiceHelper.Get<IListItemsService>();
 
+        // Default date
         PurchasedPicker.Date = DateTime.Now.Date;
 
         try
         {
             if (ItemId is int id)
             {
+                // Edit mode
                 var listItems = await _items!.GetByListAsync(ListId);
                 _editing = listItems.FirstOrDefault(i => i.Id == id);
                 if (_editing is null)
@@ -64,6 +83,7 @@ public partial class ItemEditPage : ContentPage
             }
             else
             {
+                // Add mode
                 Title = "Add Item";
                 PurchasedCheck.IsChecked = true;
                 PurchasedPicker.IsEnabled = true;
