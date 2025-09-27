@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PantryPal.Mobile.Views.ListEditPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Edit List">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="12" Spacing="12">
+            <Entry x:Name="NameEntry" Placeholder="List name (required)" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <CheckBox x:Name="PurchasedCheck"
+                          VerticalOptions="Center"
+                          CheckedChanged="OnPurchasedChecked" />
+                <Label Text="Purchased"
+                       VerticalTextAlignment="Center" />
+            </Grid>
+
+            <DatePicker x:Name="PurchasedPicker" IsEnabled="False" />
+
+            <HorizontalStackLayout Spacing="12" Margin="0,12,0,0">
+                <Button Text="Save" Clicked="OnSave"/>
+                <Button Text="Cancel" Clicked="OnCancel"/>
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

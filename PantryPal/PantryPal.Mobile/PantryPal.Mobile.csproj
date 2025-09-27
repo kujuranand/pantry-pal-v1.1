@@ -62,6 +62,9 @@
 	  <MauiXaml Update="Views\ListDetailPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Views\ListEditPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\ListsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

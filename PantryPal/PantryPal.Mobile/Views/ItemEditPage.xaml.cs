@@ -1,6 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Controls;                    
+using Microsoft.Maui.Controls;
 using PantryPal.Core.Models;
 using PantryPal.Core.Services.Abstractions;
 using PantryPal.Mobile.Services;
@@ -13,6 +13,7 @@ public partial class ItemEditPage : ContentPage, IQueryAttributable
     public int? ItemId { get; set; }
 
     private IListItemsService? _items;
+    private IListsService? _lists;
     private ILogger<ItemEditPage>? _log;
     private GroceryListItem? _editing;
 
@@ -35,7 +36,7 @@ public partial class ItemEditPage : ContentPage, IQueryAttributable
         {
             if (itemVal is int ii) ItemId = ii;
             else if (itemVal is string istring && int.TryParse(istring, out var iip)) ItemId = iip;
-            else ItemId = null; 
+            else ItemId = null;
         }
     }
 
@@ -45,9 +46,7 @@ public partial class ItemEditPage : ContentPage, IQueryAttributable
 
         _log ??= ServiceHelper.Get<ILogger<ItemEditPage>>();
         _items ??= ServiceHelper.Get<IListItemsService>();
-
-        // Default date
-        PurchasedPicker.Date = DateTime.Now.Date;
+        _lists ??= ServiceHelper.Get<IListsService>();
 
         try
         {
@@ -72,21 +71,50 @@ public partial class ItemEditPage : ContentPage, IQueryAttributable
                 {
                     PurchasedCheck.IsChecked = true;
                     PurchasedPicker.IsEnabled = true;
-                    PurchasedPicker.Date = DateTime.SpecifyKind(_editing.PurchasedDate.Value, DateTimeKind.Utc)
-                                                   .ToLocalTime().Date;
+                    PurchasedPicker.Date = DateTime
+                        .SpecifyKind(_editing.PurchasedDate.Value, DateTimeKind.Utc)
+                        .ToLocalTime().Date;
                 }
                 else
                 {
                     PurchasedCheck.IsChecked = false;
                     PurchasedPicker.IsEnabled = false;
+                    PurchasedPicker.Date = DateTime.Now.Date;
                 }
             }
             else
             {
-                // Add mode
+                // Add mode — smart defaults
                 Title = "Add Item";
+
+                DateTime localDefault;
+
+                // 1) Use list-level PurchasedUtc (if set)
+                var list = await _lists!.GetAsync(ListId);
+                if (list?.PurchasedUtc is DateTime listPu)
+                {
+                    localDefault = DateTime.SpecifyKind(listPu, DateTimeKind.Utc).ToLocalTime().Date;
+                }
+                else
+                {
+                    // 2) Otherwise use most recent PurchasedDate among items (if any)
+                    var existing = await _items!.GetByListAsync(ListId);
+                    var recent = existing
+                        .Where(i => i.PurchasedDate.HasValue)
+                        .Select(i => DateTime.SpecifyKind(i.PurchasedDate!.Value, DateTimeKind.Utc).ToLocalTime().Date)
+                        .OrderByDescending(d => d)
+                        .FirstOrDefault();
+
+                    if (recent != default)
+                        localDefault = recent;
+                    else
+                        // 3) Fall back to today
+                        localDefault = DateTime.Now.Date;
+                }
+
                 PurchasedCheck.IsChecked = true;
                 PurchasedPicker.IsEnabled = true;
+                PurchasedPicker.Date = localDefault;
             }
         }
         catch (Exception ex)

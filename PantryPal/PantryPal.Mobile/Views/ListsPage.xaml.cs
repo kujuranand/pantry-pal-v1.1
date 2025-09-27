@@ -208,11 +208,11 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
             var choice = await DisplayActionSheet(
                 $"Options for '{s.Name}'",
                 "Cancel", null,
-                "Edit name", "Delete");
+                "Edit", "Delete");
 
-            if (choice == "Edit name")
+            if (choice == "Edit")
             {
-                await RenameAsync(s);
+                await Shell.Current.GoToAsync($"{nameof(ListEditPage)}?ListId={s.Id}");
             }
             else if (choice == "Delete")
             {
@@ -223,22 +223,6 @@ public partial class ListsPage : ContentPage, INotifyPropertyChanged
         {
             await Task.Delay(TapSuppression);
             _suppressNextTap = false;
-        }
-    }
-
-    private async Task RenameAsync(ListSummary s)
-    {
-        try
-        {
-            var newName = await DisplayPromptAsync("Rename", "New name:", initialValue: s.Name);
-            if (string.IsNullOrWhiteSpace(newName)) return;
-
-            await _lists!.RenameAsync(s.Id, newName.Trim());
-            await LoadAsync();
-        }
-        catch (Exception)
-        {
-            await DisplayAlert("Error", "Could not rename list.", "OK");
         }
     }
 
