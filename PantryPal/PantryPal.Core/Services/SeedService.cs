@@ -27,7 +27,7 @@ public sealed class SeedService : ISeedService
 
     public async Task<GroceryList> CreateSampleListAsync(string? name = null, int? itemCount = null, CancellationToken ct = default)
     {
-        // Name: "LIst N" unless caller provides one
+        // Name: "List N" unless caller provides one
         var listName = string.IsNullOrWhiteSpace(name)
             ? $"List {await GetNextTestIndexAsync()}"
             : name.Trim();
@@ -41,10 +41,13 @@ public sealed class SeedService : ISeedService
         _log.LogInformation("[Seed] Creating sample list '{Name}' on {Date:u} with {Count} items",
             listName, listDateUtc, count);
 
-        // Create the list with our chosen CreatedUtc
-        var list = await _lists.CreateAsync(listName, createdUtc: listDateUtc);
+        // Create the list with CreatedUtc and PurchasedUtc set to the same date
+        var list = await _lists.CreateAsync(
+            name: listName,
+            createdUtc: listDateUtc,
+            purchasedUtc: listDateUtc);
 
-        // Add items (PurchasedDate = list date for consistent grouping)
+        // Add items (PurchasedDate = list.PurchasedUtc for consistent grouping)
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < count; i++)
         {
@@ -58,7 +61,7 @@ public sealed class SeedService : ISeedService
                 ListId = list.Id,
                 Name = itemName,
                 Cost = cost,
-                PurchasedDate = listDateUtc
+                PurchasedDate = list.PurchasedUtc   // inherit from list
             };
 
             try
