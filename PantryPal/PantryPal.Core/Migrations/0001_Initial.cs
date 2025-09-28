@@ -25,8 +25,18 @@ CREATE TABLE IF NOT EXISTS GroceryLists (
   Id            INTEGER PRIMARY KEY AUTOINCREMENT,
   Name          TEXT    NOT NULL,
   CreatedUtc    TEXT    NOT NULL,
-  PurchasedUtc  TEXT    NULL
+  PurchasedUtc  TEXT    NOT NULL,
+  Notes         TEXT    NULL
 );");
+
+            // indexes for sorting/filtering
+            await conn.ExecuteAsync(@"
+CREATE INDEX IF NOT EXISTS IX_GroceryLists_CreatedUtc
+ON GroceryLists(CreatedUtc);");
+
+            await conn.ExecuteAsync(@"
+CREATE INDEX IF NOT EXISTS IX_GroceryLists_PurchasedUtc
+ON GroceryLists(PurchasedUtc);");
 
             // items
             log?.LogInformation("[Migration 0001] Create GroceryListItems");

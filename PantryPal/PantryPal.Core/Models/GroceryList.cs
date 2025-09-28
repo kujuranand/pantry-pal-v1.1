@@ -14,5 +14,8 @@ public class GroceryList
     [NotNull]
     public DateTime CreatedUtc { get; set; }
 
+    [NotNull]
     public DateTime? PurchasedUtc { get; set; }
+
+    public string? Notes { get; set; }              // optional notes
 }
